@@ -1,0 +1,27 @@
+---
+title: "TO628_Travel Insurance"
+author: "Helga Zhang"
+date: "2024-04-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load Data & Clean Data
+
+```{r}
+travel <- read.csv("Travel Insurance Prediction.csv")
+str(travel)
+summary(travel)
+
+#factorize chr
+travel$EmploymentType <- as.factor(travel$EmploymentType)
+travel$GraduateOrNot <- as.factor(travel$GraduateOrNot)
+travel$FrequentFlyer <- as.factor(travel$FrequentFlyer)
+travel$EverTravelledAbroad <- as.factor(travel$EverTravelledAbroad)
+str(travel)
+
+```
+
