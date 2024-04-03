@@ -21,7 +21,14 @@ travel$EmploymentType <- as.factor(travel$EmploymentType)
 travel$GraduateOrNot <- as.factor(travel$GraduateOrNot)
 travel$FrequentFlyer <- as.factor(travel$FrequentFlyer)
 travel$EverTravelledAbroad <- as.factor(travel$EverTravelledAbroad)
+travel$ChronicDiseases <- as.factor(travel$ChronicDiseases) # Assuming chronic diseases is also a binary factor
 str(travel)
+
+# Logistic Regression Model
+travel_model <- glm(TravelInsurance ~ ., data = travel, family = binomial)
+
+# Summary of the model to examine factors
+summary(travel_model)
 
 ```
 
