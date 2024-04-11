@@ -32,6 +32,7 @@ library(e1071)
 library(randomForest)
 library(class)
 library(rpart)
+library(C50)
 ```
 
 > Split test and train data
@@ -55,7 +56,7 @@ test_y <- factor(test_set$TravelInsurance, levels = c(0, 1))
 
 > Build Models
 
-##e LR Model
+## LR Model
 
 ```{r}
 # Build the model
@@ -78,6 +79,21 @@ LR_step <- step(logit_model_big, direction = "backward")
 
 summary(logit_model_big)
 summary(LR_step)
+
+# Predict on the test set
+logit_big_pred <- predict(logit_model_big, newdata = test_set, type = "response")
+logit_big_pred_class <- ifelse(logit_big_pred > 0.5, 1, 0)
+
+LR_step_pred <- predict(LR_step, newdata = test_set, type = "response")
+LR_step_pred_class <- ifelse(LR_step_pred > 0.5, 1, 0)
+
+# Confusion Matrix and Kappa
+cm_logit_big <- confusionMatrix(factor(logit_big_pred_class), factor(test_y))
+print(cm_logit_big)
+
+cm_LR_step <- confusionMatrix(factor(LR_step_pred_class), factor(test_y))
+print(cm_LR_step)
+
 
 ```
 
@@ -182,9 +198,6 @@ print(cm_svm)
 
 ```{r}
 #### Decision Tree Model
-library(class)
-library(caret)
-library(C50)
 
 dt_model <- C5.0(as.factor(TravelInsurance) ~ ., data = train_set)
 
@@ -227,7 +240,6 @@ print(cm_rf)
 ```{r}
 #### Starting the Stacked Model
 # Combine prediction vectors 
-library(C50)
 
 combined_predictions <- data.frame(
   LogisticRegression = logit_pred_class,
@@ -275,6 +287,55 @@ cost_model <- stacked_dt_model <- C5.0(as.factor(Actual) ~ . , data = combined_t
 
 pred_cost <- predict(cost_model, combined_test)
 
-confusionMatrix(as.factor(pred_cost), as.factor(combined_test$Actual), positive = "1")
+cm_costmodel<-confusionMatrix(as.factor(pred_cost), as.factor(combined_test$Actual), positive = "1")
+print(cm_costmodel)
+```
+## Overview
+
+```{r}
+#Function to calculate profit (Note: 2 Different functions as structur of Confusion Matrix is not fully consistent across models)
+
+profit_calc1<-function(cm){
+  TN<-cm$table[2,2]
+  TP<-cm$table[1,1]
+  FN<-cm$table[2,1]
+  FP<-cm$table[1,2]
+  profit<-0*TN+5*TP-3*FP+0*FN
+  kappa<-cm$overall[2]
+  accuracy<-cm$overall[1]
+  val<-c(profit,kappa,accuracy)
+  return(val)
+}
+
+profit_calc2<-function(cm){
+  TN<-cm$table[1,1]
+  TP<-cm$table[2,2]
+  FN<-cm$table[1,2]
+  FP<-cm$table[2,1]
+  profit<-0*TN+5*TP-3*FP+0*FN
+  kappa<-cm$overall[2]
+  accuracy<-cm$overall[1]
+  val<-c(profit,kappa,accuracy)
+  return(val)
+}
+
+#extract Profit and Kappa for each model
+DT<-profit_calc1(cm_dt)
+KNN<-profit_calc1(cm_knn)
+ANN<-profit_calc1(cm_ann)
+LR<-profit_calc2(cm_logit)
+LR_Big<-profit_calc2(cm_LR_step)
+RF<-profit_calc1(cm_rf)
+Stacked_Model<-profit_calc1(cm_stacked_dt)
+SVM<-profit_calc1(cm_svm)
+NoModel<-c(sum(test_set$TravelInsurance==1, na.rm=TRUE)*6-3*nrow(test_set),1,sum(test_set$TravelInsurance==1, na.rm=TRUE)/nrow(test_set))
+
+#create dataframe with all values
+summary_df<-data.frame(rbind(DT,KNN,ANN,LR,LR_Big,RF,Stacked_Model,SVM,NoModel))
+colnames(summary_df)<-c("Profit", "Kappa","Accuracy")
+
+summary_df
+
 ```
 
+To sum up, based on Profit, Kappa, and Accuracy, the best performing model is the Random Forest Model. It leads to the highest generated profit ($2,005), and has the highest Kappa (0.5986422), and accuracy(82.83845%). The Decision Tree model performs very similarly to the Random Forest Model. While most other model perform somewhat worse in terms of profit, the stacked model performs considerably worse in that regard, which is rather supprising, given it is the second best model with regards to Kappa and Accuracy. Still, all models are better than the scenario with no model, which results in a loss of $1,1581. In conclusion, it would make most sense to deploy the random forest model, as it leads to the highest profit, and also performs best in terms of accuracy and Kappa. 
