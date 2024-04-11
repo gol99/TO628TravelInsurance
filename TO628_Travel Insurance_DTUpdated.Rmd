@@ -27,7 +27,7 @@ str(travel)
 library(readr)
 library(dplyr)
 library(caret)
-library(nnet) 
+library(neuralnet) 
 library(e1071) 
 library(randomForest)
 library(class)
@@ -125,19 +125,29 @@ print(cm_knn)
 ```{r}
 #### ANN Model
 set.seed(123)
-ann_model <- nnet(TravelInsurance ~ ., data = train_set, size = 5, linout = FALSE, maxit = 200)
 
-# Adjust 'test_set' to include necessary preprocessing applied to 'train_set' before training the ANN model
-test_x_ann <- test_set %>% select(-TravelInsurance)
+#prepare data
+train_ann<-as.data.frame(cbind(train_x_prepared,train_y))
+colnames(train_ann) <- make.names(colnames(train_ann), unique=TRUE)
+train_ann$train_y<-ifelse(train_ann$train_y==1,0,1)
+
+test_ann<-as.data.frame(cbind(test_x_prepared,test_y))
+colnames(test_ann) <- make.names(colnames(test_ann), unique=TRUE)
+test_ann$test_y<-ifelse(test_ann$test_y==1,1,0)
+
+#### ANN Model
+set.seed(123)
+ann_model <- neuralnet(train_y ~ ., data = train_ann, hidden = 5)
+
 
 # Predict on the test set using the ANN model
-ann_pred_prob <- predict(ann_model, newdata = test_x_ann, type = "raw")
+ann_pred_prob <- predict(ann_model, newdata = test_ann, type = "raw")
 
 # Convert probabilities to class predictions based on a threshold (e.g., 0.5)
 ann_pred_class <- ifelse(ann_pred_prob > 0.5, 1, 0)
 
 # Ensure test_y is a factor with explicit levels
-test_y_factor <- factor(test_y, levels = unique(test_y))
+test_y_factor <- factor(test_ann$test_y, levels = unique(test_ann$test_y))
 
 # Ensure ann_pred_class is a factor and has the same levels as test_y_factor
 ann_pred_factor <- factor(ann_pred_class, levels = levels(test_y_factor))
