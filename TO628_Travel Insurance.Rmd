@@ -31,6 +31,7 @@ library(nnet)
 library(e1071) 
 library(randomForest)
 library(class)
+library(rpart)
 
 # Split the data
 set.seed(123) # Ensure reproducibility
