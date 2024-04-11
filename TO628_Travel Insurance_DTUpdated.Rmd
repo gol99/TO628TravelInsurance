@@ -1,0 +1,271 @@
+---
+title: "TO628_Travel Insurance"
+author: "Helga Zhang and Caio Rodrigues"
+date: "2024-04-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+> Load Data & Clean Data
+
+```{r}
+travel <- read.csv("Travel Insurance Prediction.csv")
+str(travel)
+summary(travel)
+
+#factorize chr
+travel$EmploymentType <- as.factor(travel$EmploymentType)
+travel$GraduateOrNot <- as.factor(travel$GraduateOrNot)
+travel$FrequentFlyer <- as.factor(travel$FrequentFlyer)
+travel$EverTravelledAbroad <- as.factor(travel$EverTravelledAbroad)
+travel$ChronicDiseases <- as.factor(travel$ChronicDiseases) # Assuming chronic diseases is also a binary factor
+str(travel)
+
+library(readr)
+library(dplyr)
+library(caret)
+library(nnet) 
+library(e1071) 
+library(randomForest)
+library(class)
+library(rpart)
+```
+
+> Split test and train data
+
+```{r}
+# Split the data
+set.seed(123) # Ensure reproducibility
+splitIndex <- createDataPartition(travel$TravelInsurance, p = .5, list = FALSE, times = 1)
+train_set <- travel[splitIndex,]
+test_set <- travel[-splitIndex,]
+
+# Preparing for data modeling
+train_x <- train_set %>% select(-TravelInsurance)
+train_y <- train_set$TravelInsurance
+test_x <- test_set %>% select(-TravelInsurance)
+test_y <- test_set$TravelInsurance
+# Convert the response variable in both training and testing sets into a factor with explicit levels
+train_y <- factor(train_set$TravelInsurance, levels = c(0, 1))
+test_y <- factor(test_set$TravelInsurance, levels = c(0, 1))
+```
+
+> Build Models
+
+##e LR Model
+
+```{r}
+# Build the model
+logit_model <- glm(TravelInsurance ~ ., data = train_set, family = "binomial")
+
+# Predict on the test set
+logit_pred <- predict(logit_model, newdata = test_set, type = "response")
+logit_pred_class <- ifelse(logit_pred > 0.5, 1, 0)
+
+# Confusion Matrix and Kappa
+cm_logit <- confusionMatrix(factor(logit_pred_class), factor(test_y))
+print(cm_logit)
+
+# Summary of the model to examine factors
+summary(logit_model)
+
+logit_model_big <- glm(TravelInsurance ~ . + .*. , data = train_set, family = "binomial")
+
+LR_step <- step(logit_model_big, direction = "backward")
+
+summary(logit_model_big)
+summary(LR_step)
+
+```
+
+## KNN Model
+
+```{r}
+# Normalize data function
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+# Normalize training and testing sets (excluding factors)
+numeric_columns <- sapply(train_x, is.numeric)
+train_x_normalized <- as.data.frame(sapply(train_x[, numeric_columns], normalize))
+test_x_normalized <- as.data.frame(sapply(test_x[, numeric_columns], normalize))
+
+# Add back the factor columns
+train_x_normalized <- cbind(train_x_normalized, train_x[!numeric_columns])
+test_x_normalized <- cbind(test_x_normalized, test_x[!numeric_columns])
+
+# Convert factors to dummy variables for KNN
+train_x_dummy <- dummyVars(" ~ .", data = train_x_normalized)
+train_x_prepared <- predict(train_x_dummy, newdata = train_x_normalized)
+
+test_x_dummy <- dummyVars(" ~ .", data = test_x_normalized)
+test_x_prepared <- predict(test_x_dummy, newdata = test_x_normalized)
+
+# KNN model
+set.seed(123)
+knn_pred <- knn(train = train_x_prepared, test = test_x_prepared, cl = train_y, k = 5)
+# Ensuring 'test_y' is a factor with correct levels
+test_y <- factor(test_y, levels = unique(test_y))
+
+# Also ensure 'knn_pred' is a factor and has the same levels as 'test_y'
+knn_pred <- factor(knn_pred, levels = levels(test_y))
+
+# Confusion Matrix and Kappa for KNN
+cm_knn <- confusionMatrix(knn_pred, test_y)
+print(cm_knn)
+
+```
+
+## ANN Model
+
+```{r}
+#### ANN Model
+set.seed(123)
+ann_model <- nnet(TravelInsurance ~ ., data = train_set, size = 5, linout = FALSE, maxit = 200)
+
+# Adjust 'test_set' to include necessary preprocessing applied to 'train_set' before training the ANN model
+test_x_ann <- test_set %>% select(-TravelInsurance)
+
+# Predict on the test set using the ANN model
+ann_pred_prob <- predict(ann_model, newdata = test_x_ann, type = "raw")
+
+# Convert probabilities to class predictions based on a threshold (e.g., 0.5)
+ann_pred_class <- ifelse(ann_pred_prob > 0.5, 1, 0)
+
+# Ensure test_y is a factor with explicit levels
+test_y_factor <- factor(test_y, levels = unique(test_y))
+
+# Ensure ann_pred_class is a factor and has the same levels as test_y_factor
+ann_pred_factor <- factor(ann_pred_class, levels = levels(test_y_factor))
+
+# Confusion Matrix and Kappa
+cm_ann <- confusionMatrix(ann_pred_factor, test_y_factor)
+print(cm_ann)
+```
+
+## SVM Model
+
+```{r}
+##### SVM Model
+# Preparing the data
+train_set$TravelInsurance <- factor(train_set$TravelInsurance, levels = c(0, 1))
+test_set$TravelInsurance <- factor(test_set$TravelInsurance, levels = c(0, 1))
+
+# Model
+svm_model <- svm(TravelInsurance ~ ., data = train_set, kernel = "radial")
+
+# Predict on the test set
+svm_pred <- predict(svm_model, newdata = test_set)
+
+# Convert predictions to factor 
+svm_pred_factor <- factor(svm_pred, levels = levels(test_y))
+
+# Confusion Matrix and Kappa 
+cm_svm <- confusionMatrix(svm_pred_factor, test_y)
+print(cm_svm)
+```
+
+## DT Model
+
+```{r}
+#### Decision Tree Model
+library(class)
+library(caret)
+library(C50)
+
+dt_model <- C5.0(as.factor(TravelInsurance) ~ ., data = train_set)
+
+# Predict on the test set 
+dt_pred <- predict(dt_model, newdata = test_set, type = "class")
+
+# Convert predictions to factor 
+dt_pred_factor <- factor(dt_pred, levels = levels(test_y))
+
+# Confusion Matrix and Kappa 
+cm_dt <- confusionMatrix(dt_pred_factor, test_y)
+print(cm_dt)
+
+```
+
+## RF Model
+
+```{r}
+##### Random Forest Model
+
+# Getting data ready
+train_set$TravelInsurance <- factor(train_set$TravelInsurance, levels = c(0, 1))
+test_set$TravelInsurance <- factor(test_set$TravelInsurance, levels = c(0, 1))
+
+# Model
+rf_model <- randomForest(TravelInsurance ~ ., data = train_set, ntree = 100)
+
+# Predictions
+rf_pred <- predict(rf_model, newdata = test_set)
+rf_pred_factor <- factor(rf_pred, levels = levels(test_y))
+
+# Confusion Matrix and Kappa
+cm_rf <- confusionMatrix(rf_pred_factor, test_y)
+print(cm_rf)
+
+```
+
+## Stacked Model
+
+```{r}
+#### Starting the Stacked Model
+# Combine prediction vectors 
+library(C50)
+
+combined_predictions <- data.frame(
+  LogisticRegression = logit_pred_class,
+  KNN = knn_pred,
+  ANN = ann_pred_class,
+  SVM = svm_pred_factor,
+  DT = dt_pred_factor,
+  RF = rf_pred_factor,
+  Actual = test_y
+)
+
+# Structure of the new data frame
+str(combined_predictions)
+
+# Assuming a simple 50/50 split 
+set.seed(123)
+splitIndex2 <- createDataPartition(combined_predictions$Actual, p = .5, list = FALSE)
+combined_train <- combined_predictions[splitIndex2, ]
+combined_test <- combined_predictions[-splitIndex2, ]
+
+# Build the model
+stacked_dt_model <- C5.0(Actual ~ ., data = combined_train, method = "class")
+
+# Summary of the model
+summary(stacked_dt_model)
+
+# Predict on the combined test set
+stacked_dt_pred <- predict(stacked_dt_model, newdata = combined_test, type = "class")
+
+# Convert predictions to factor 
+stacked_dt_pred_factor <- factor(stacked_dt_pred, levels = levels(combined_test$Actual))
+
+# confusion matrix and Kappa
+cm_stacked_dt <- confusionMatrix(stacked_dt_pred_factor, combined_test$Actual)
+print(cm_stacked_dt)
+
+```
+
+## Cost Model
+
+```{r}
+cost_matrix <- matrix(c(0,6,4,0), nrow = 2)
+cost_matrix
+cost_model <- stacked_dt_model <- C5.0(as.factor(Actual) ~ . , data = combined_train, costs = cost_matrix)
+
+pred_cost <- predict(cost_model, combined_test)
+
+confusionMatrix(as.factor(pred_cost), as.factor(combined_test$Actual), positive = "1")
+```
+
