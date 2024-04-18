@@ -12,6 +12,25 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load Data & Clean Data
 
 ```{r}
+
+#### Business Questions:
+
+#Why our prediction is relevant to your business?
+#How our prediction help your business minimum costs and maximum profits?
+#How does your business imply the output of our prediction?
+
+#### Awnsering Business Questions:
+
+#Provide you what type of people are more likely to purchase insurance:
+###Higher percentage of making successful call
+#Better resource allocation decision:
+###Reduce costs
+#Great fit with company’s own data:
+###Customize with the factor that is unique to you business
+#Block noise and distractions in the dataset:
+###Solely focus on the useful information
+###Develop insights for customer behaviors
+
 travel <- read.csv("Travel Insurance Prediction.csv")
 str(travel)
 summary(travel)
@@ -206,6 +225,17 @@ stacked_dt_pred_factor <- factor(stacked_dt_pred, levels = levels(combined_test$
 cm_stacked_dt <- confusionMatrix(stacked_dt_pred_factor, combined_test$Actual)
 print(cm_stacked_dt)
 
+##### Risks and Limitation
 
+#Small data size:
+###Only 3,974 observations in total
+#Amplified in Stacked Model:
+###combined_train only has ¼ of the data in the original dataset
+###Lack of representativeness leads to biases and overfitting problems
+#Drawbacks of the random forest model:
+###Require more work to tune the model to new data
+#Limited independent variables:
+###The X variables in the model may not explain all the variances in the y variable
+###The model also does not account for changes in variables
 ```
 
