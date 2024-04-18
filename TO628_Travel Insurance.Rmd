@@ -41,6 +41,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ###Solely focus on the useful information
 ###Develop insights for customer behaviors
 
+#### Starting the Model
+
+#Load data
 travel <- read.csv("Travel Insurance Prediction.csv")
 str(travel)
 summary(travel)
