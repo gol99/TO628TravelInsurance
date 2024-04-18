@@ -12,6 +12,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ### Load Data & Clean Data
 
 ```{r}
+#### Storytelling:
+
+#Industry - Travel Insurance
+#Audience - Customer Engagement Manager:
+###Improve profitability of their operation
+#Big Idea:
+###Identify characteristics of target customer
+###Help with targeted marketing efforts
+#Quantitative measurement factors:
+###Increase in return on marketing spend o Increase in revenue
 
 #### Business Questions:
 
