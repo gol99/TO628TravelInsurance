@@ -235,17 +235,9 @@ stacked_dt_pred_factor <- factor(stacked_dt_pred, levels = levels(combined_test$
 cm_stacked_dt <- confusionMatrix(stacked_dt_pred_factor, combined_test$Actual)
 print(cm_stacked_dt)
 
-##### Risks and Limitation
+####Risk and Challenges:
 
-#Small data size:
-###Only 3,974 observations in total
-#Amplified in Stacked Model:
-###combined_train only has ¼ of the data in the original dataset
-###Lack of representativeness leads to biases and overfitting problems
-#Drawbacks of the random forest model:
-###Require more work to tune the model to new data
-#Limited independent variables:
-###The X variables in the model may not explain all the variances in the y variable
-###The model also does not account for changes in variables
+##The “travel” dataset contains only 3,974 observations in total. This size limitation is further exacerbated in ##the stacked model, which relies on predictions from the base models, and thus is the “combined_train” dataset ##used to train the stacked model is only one-fourth as large as the original dataset. Consequently, the small data ##size may result in a lack of representativeness, potentially introducing biases or overfitting issues that could ##compromise predictive accuracy when applied to new datasets. Moreover, while the Random Forest model is ##determined as the best-performing model, to optimize it when applied to new data requires, additional effort of ##tuning the data- involving the defining parameter grid and perform grid search- could be needed.
+#The model has only 8 independent variables, which cannot explain all the variations in y variable, so adding more #relevant variables- such as travel history and past insurance claims- to the training model would be desirable if #the model is to be applied in real business settings. Also the model does not account for changes in these #variables over time or the macroeconomic factors like COVID that could potentially affect people’s decisions to #purchase travel insurances.
 ```
 
